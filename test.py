@@ -43,4 +43,4 @@ if __name__ == '__main__':
     pool.join()
     print(queue.get())
     # print(len(queue.get()))
-
+    # 测试分支合并
