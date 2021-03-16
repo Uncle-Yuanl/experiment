@@ -1,0 +1,159 @@
+import pandas as pd
+import numpy as np
+from xtools import *
+from itertools import product
+import argparse
+import multiprocessing
+import os
+from time import time
+import subprocess
+
+from packages.corplugin import predict, regulation
+
+class Correspondence():
+    def __init__(self, tablename, mission, **kwargs):
+        self.tablename = tablename
+        self.mission = mission
+
+    def transferdata(self):
+        """if data exists in csv format, read csv,
+        otherwise retrieve via sql
+        """
+        abpath = '/mnt/disk3/CIData/{}.csv'.format(self.tablename)
+        if os.path.exists(abpath):
+            return pd.read_csv(abpath, keep_default_na=False, error_bad_lines=False, dtype=str)
+        else:
+            try:
+                c = "su ops -c 'sh /mnt/disk4/tools/Export2CSV.sh " + self.tablename + ' ' + abpath + "'"
+                print(c)
+                subprocess.run(c, shell=True)
+                return pd.read_csv(abpath, keep_default_na=False, error_bad_lines=False, dtype=str)
+            except:
+                mh = MarcpointHive()
+                field1, field2 = self.mission.split('_')[0], self.mission.split('_')[1]
+                sql = 'select content, {}, {}, from {}'.format(field1, field2, self.tablename)
+                return mh.query(sql)
+
+    def __expand(self, df):
+        """expand each piece of data
+        """
+        print("Data expansion start......")
+        field1, field2 = self.mission.split('_')[0], self.mission.split('_')[1]
+        if not (field1 in df.columns and field2 in df.columns):
+            raise Exception("Table {} does not have field: {} or {}".format(self.tablename, field1, field2))
+        df = df[['content', field1, field2]]
+        df = df[(df['content'] != '') & (df[field1] != '') & (df[field2] != '')]     
+        
+        # add field
+        comblist = []
+        for idx, row in df.iterrows():
+            field1list = row[field1].split('|')
+            field2list = row[field2].split('|')
+            loop_val = [field1list, field2list]
+            comblist.append(list(product(*loop_val)))
+        df[self.mission] = comblist
+        
+        # expand
+        i = 0
+        df_list = []
+        for idx, row in df.iterrows():
+            pair_list = row[self.mission]
+            count_total = len(pair_list)
+            for count, pair in enumerate(pair_list):
+                i += 1
+                df_list.append(pd.DataFrame({'count': '{}/{}'.format(count + 1, count_total),
+                                             'content': row['content'],
+                                             'a': pair[0],
+                                             'b': pair[1],
+                                             'aclass': field1,
+                                             'bclass': field2}, index=[i]))
+        df_res = pd.concat(df_list)
+        df_res['ex'] = df_res['a'] + df_res['b']
+        print("Data expansion completed...... Total: {}".format(df_res.shape))
+        return df_res
+
+    def __predict(self, df):
+        """return data filtered by various methods
+        """
+        print("Data prediction start......")
+        pred = np.array([])
+        total_loop = len(df) // 1000 + 1
+        for loop in range(total_loop):
+            tmp = predict(df[loop * 1000:(loop + 1) * 1000])
+            pred = np.concatenate([pred, tmp])
+        pred.astype(int)
+        assert len(pred) == len(df)
+        df['pred'] = pred
+        df_res = df[df['pred'] == 1]
+        print("Data prediction completed...... Total: {}", df_res.shape)
+        return df_res
+
+    def filter(self, queue, df):
+        """select only paired data
+        """
+        dfexpand = self.__expand(df)
+        dfres = self.__predict(dfexpand)
+        queue.put(dfres)
+
+    def label(self, ):
+        """
+
+        :return:
+        """
+        pass
+
+    def statistic(self, df):
+        """
+
+        """
+
+
+if __name__ == '__main__':
+    # add command line parameters
+    parser = argparse.ArgumentParser()
+    parser.add_argument("tablename", type=str,
+                        help="determine the data source, start with das. end with _tags")
+    parser.add_argument("mission", type=str,
+                        help="determine the mission type, 'xuqiu_fangan' or 'fangan_driver'")
+    parser.add_argument("--numprocess", type=int, default=4,
+                        help="determine the number of processes")
+    args = parser.parse_args()
+    cor = Correspondence(args.tablename, args.mission)
+
+    # retrieve data by sql
+    start = time()
+    df = cor.transferdata()
+    print("Data acquisition completed... Time cost: ", time() - start)
+    print("Data to process: {}".format(df.shape))
+
+    # filter data with multiprocess
+    queue = multiprocessing.Manager().Queue()
+    pool = multiprocessing.Pool(args.numprocess)
+    s = time()
+    pw = pool.apply_async(func=cor.filter, args=(queue, df))
+    pw.wait()
+    print("Data selection completed...... Time cost：", time() - s)
+    pool.close()
+    pool.join()
+    if queue.empty():
+        print("Process failed, no data return......")
+    else:
+        # print("Total data: ", len(queue.get()))
+        # print(queue.get())
+
+        # statistics and calculate
+        print("Start statistics......")
+
+
+
+
+
+
+
+
+
+
+
+
+
+

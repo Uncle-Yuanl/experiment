@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="4249a988-c0dc-4da4-b55f-d3676b942f90" name="xiaoshi">
+        <fileTransfer rootFolder="/mnt/disk2/data/YuanHAO/对应关系应用" accessType="SFTP" host="172.16.1.51" port="22" sshConfigId="3540148c-ce30-4c66-ada4-097af5f2a6a2" sshConfig="yuanhao@172.16.1.51:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
