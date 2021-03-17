@@ -169,12 +169,12 @@ class Combine():
                     if b.split('.')[-1] in w.split('.')[-1]:
                         ls.append("需求." + ".".join(w.split('.')[-2:]))
                     else:
-                        ls.append("需求." + w.split('.')[-2] + b.split('.')[-1] + '_' + w.split('.')[-1])
+                        ls.append("需求." + w.split('.')[-2] + "." + b.split('.')[-1] + '_' + w.split('.')[-1])
                 for c in lsc:
                     if b.split('.')[-1] in w.split('.')[-1]:
                         ls.append("需求." + ".".join(w.split('.')[-2:]) + '_' + c.split('.')[-1])
                     else:
-                        ls.append("需求." + w.split('.')[-2] + b.split('.')[-1] \
+                        ls.append("需求." + w.split('.')[-2] + "." + b.split('.')[-1] \
                                   + '_' + w.split('.')[-1] + '_' + c.split('.')[-1])
         return '|'.join(ls)
 
@@ -188,3 +188,33 @@ class Combine():
         df2 = pd.DataFrame(collections.Counter(total).most_common())
         df2.columns = ['组合需求', 'count']
         return df2
+
+    def countclass(self, df):
+        """return ratio of every class
+        """
+        clsdic = {}
+        totalcount = df['count'].sum()
+        clslist = df['组合需求'].apply(lambda x: x.split('.')[1]).unique().tolist()
+        for cls in clslist:
+            dfcls = df[df['组合需求'].str.contains(cls)]
+            clsdic[cls] = round(dfcls['count'].sum() / totalcount * 100, 2)
+        return sorted(clsdic.items(), key=lambda x: (x[1], x[0]), reverse=True)
+
+    def search(self, df, cls, k):
+        """search the top k in combined xuqiu under given cls
+        """
+        totalcount = df['count'].sum()
+        dfcls = df[df['组合需求'].str.contains(cls)].reset_index(drop=True)
+        clscount = dfcls['count'].sum()
+        ratiocls = clscount / totalcount
+        ratiodic = {}
+        for pd in dfcls.itertuples():
+            if pd[0] == k:
+                break
+            xuqiu_str = pd[1].split('.')[-1]
+            xuqiu_rat = int(pd[2]) / clscount
+            ratiodic[xuqiu_str] = xuqiu_rat
+        return ratiocls, ratiodic
+
+
+
