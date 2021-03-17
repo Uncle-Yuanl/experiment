@@ -4,7 +4,7 @@ import pandas as pd
 #
 # print(df)
 
-test = [["过敏", "牙齿过敏"],
+outputwords = [["过敏", "牙齿过敏"],
         ["变白", "牙齿变白", "牙齿出现裂缝", "牙齿发黄", "牙齿黄", "牙齿敏感", "牙齿松动", "牙齿疼痛", "牙齿有斑点",
          "牙敏感", "牙齿健康", "根部蛀牙", "焕白牙齿", "坚固牙齿", "健白牙齿", "美白", "美白牙齿", "强健牙齿", "清洁牙齿",
          "三重美白", "伤害牙釉质", "牙齿变黑", "牙齿变黄", "牙齿酸痛", "牙齿自然白", "牙垢", "预防牙垢", "早晚美白", "蛀牙"],
@@ -22,8 +22,8 @@ test = [["过敏", "牙齿过敏"],
          "修复口腔受损组织", "牙周组织健康"],
         ["氟斑牙", "黑牙", "黄牙", "烟牙"]]
 
-with open('/test.txt', 'w', encoding='utf-8') as f:
-    for cls, wl in enumerate(test):
-        f.write("{class: }".format(cls))
+with open('./test.txt', 'w', encoding='utf-8') as f:
+    for cls, wl in enumerate(outputwords):
+        f.write("class: {}".format(cls) + '\n')
         for word in wl:
-            f.write(word)
+            f.write(word + '\n')
