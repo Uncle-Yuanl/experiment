@@ -13,12 +13,8 @@ from sklearn.cluster import KMeans
 
 
 class Combine():
-    def __init__(self, tagsname):
-        if not tagsname.endswith("tags"):
-            raise Exception("请传入tags表")
-        if not tagsname.startswith("das."):
-            tagsname = "das." + tagsname
-        self.tablename = tagsname
+    def __init__(self):
+        pass
 
     def _query(self):
         self.mh = MarcpointHive()
@@ -30,7 +26,7 @@ class Combine():
         print("数据量为：", df.shape)
         return df
 
-    def transferdata(self, abpath=None):
+    def transferdata(self, tablename, abpath=None):
         """通过export2csv工具，将表以csv格式传输至绝对路径
 
         parameters:
@@ -40,10 +36,14 @@ class Combine():
         abpath: string
             数据存放的绝对路径
         """
+        if not tablename.endswith("tags"):
+            raise Exception("请传入tags表")
+        if not tablename.startswith("das."):
+            tagsname = "das." + tablename
         if not abpath:
-            abpath = "/mnt/disk3/CIData/" + self.tablename + ".csv"
+            abpath = "/mnt/disk3/CIData/" + tablename + ".csv"
         if not os.path.exists(abpath):
-            c = "su ops -c 'sh /mnt/disk4/tools/Export2CSV.sh " + self.tablename + ' ' + abpath + "'"
+            c = "su ops -c 'sh /mnt/disk4/tools/Export2CSV.sh " + tablename + ' ' + abpath + "'"
             print(c)
             subprocess.run(c, shell=True)
         df = pd.read_csv(abpath, error_bad_lines=False, dtype=str)
@@ -54,50 +54,21 @@ class Combine():
             raise Exception("Please use comprehensive lexicon to label the data !")
         return df
 
-    def __func(self, tags):
-        """tags即attr字段内容
-        """
-        if '问题期许' not in tags:
-            return ""
-        tags = tags.split('|')
-        lsw, lsb, lsc = [], [], []
-        for tag in tags:
-            if tag.startswith('需求.问题期许'):
-                lsw.append(tag)
-            elif tag.startswith('需求.部位'):
-                lsb.append(tag)
-            elif tag.startswith('需求.程度'):
-                lsc.append(tag)
-        ls = []
-        for w in lsw:
-            if len(lsb) == 0:
-                if len(lsc) == 0:
-                    ls.append("需求." + w.split('.')[-1])
-                for c in lsc:
-                    ls.append("需求." + w.split('.')[-1] + '_' + c.split('.')[-1])
-            for b in lsb:
-                if len(lsc) == 0:
-                    if b.split('.')[-1] in w.split('.')[-1]:
-                        ls.append("需求." + w.split('.')[-1])
-                    else:
-                        ls.append("需求." + b.split('.')[-1] + '_' + w.split('.')[-1])
-                for c in lsc:
-                    if b.split('.')[-1] in w.split('.')[-1]:
-                        ls.append("需求." + w.split('.')[-1] + '_' + c.split('.')[-1])
-                    else:
-                        ls.append("需求." + b.split('.')[-1] + '_' + w.split('.')[-1] + '_' + c.split('.')[-1])
-        return '|'.join(ls)
+    def df2cluster(self, df, k):
+        """statistic topk 问题期许
 
-    def combine(self, df):
-        """combine after having tags
+        parameter:  dataframe
+            df after transferdata
+        k:  int
+            top k 问题需求
         """
-        df.attr = df.attr.astype('str')
-        df = df[['content', 'attr']]
-        df = df.drop_duplicates()
-        total = '|'.join(list(df[df.attr.str.contains('问题期许')].attr.apply(self.__func))).split('|')
-        df2 = pd.DataFrame(collections.Counter(total).most_common())
-        df2.columns = ['组合需求', 'count']
-        return df2
+        def __sel_qixu(attr):
+            return "|".join([x.split(".")[-1] for x in attr.split("|") if "问题期许" in x])
+        df = df[df.attr.str.contains("问题期许")]
+        qixu_list = "|".join(list(df.attr.apply(__sel_qixu))).split("|")
+        qixu_num = collections.Counter(qixu_list).most_common()
+        dfqixu = pd.DataFrame(qixu_num[:k], columns=["问题期许", "count"])
+        return dfqixu
 
     def cluster(self, n_clusters, filename=None, df=None, tofile=False):
         """return result of cluster with given file or df
@@ -106,7 +77,8 @@ class Combine():
         if not os.path.exists(path) and not isinstance(df, pd.DataFrame):
             raise Exception("Please upload cluster file to ./files folder OR specify the df")
         if not filename:
-            ws = df["组合需求"].apply(lambda x: x.split('.')[-1]).tolist()
+            # ws = df["组合需求"].apply(lambda x: x.split('.')[-1]).tolist()
+            ws = df["问题期许"].tolist()
         else:
             ws = pd.read_excel(path, header=None)[0].tolist()
 
@@ -169,3 +141,50 @@ class Combine():
                     f.write("--------------class: {}---------------".format(cls) + '\n')
                     for word in wl:
                         f.write(word + '\n')
+
+    def __func(self, tags):
+        """tags即attr字段内容
+        更新之后attr字段中的需求格式为： 需求.问题期许/部位/程度.$类别.xx
+        """
+        if '问题期许' not in tags:
+            return ""
+        tags = tags.split('|')
+        lsw, lsb, lsc = [], [], []
+        for tag in tags:
+            if tag.startswith('需求.问题期许'):
+                lsw.append(tag)
+            elif tag.startswith('需求.部位'):
+                lsb.append(tag)
+            elif tag.startswith('需求.程度'):
+                lsc.append(tag)
+        ls = []
+        for w in lsw:
+            if len(lsb) == 0:
+                if len(lsc) == 0:
+                    ls.append("需求." + ".".join(w.split('.')[-2:]))
+                for c in lsc:
+                    ls.append("需求." + ".".join(w.split('.')[-2:]) + '_' + c.split('.')[-1])
+            for b in lsb:
+                if len(lsc) == 0:
+                    if b.split('.')[-1] in w.split('.')[-1]:
+                        ls.append("需求." + ".".join(w.split('.')[-2:]))
+                    else:
+                        ls.append("需求." + w.split('.')[-2] + b.split('.')[-1] + '_' + w.split('.')[-1])
+                for c in lsc:
+                    if b.split('.')[-1] in w.split('.')[-1]:
+                        ls.append("需求." + ".".join(w.split('.')[-2:]) + '_' + c.split('.')[-1])
+                    else:
+                        ls.append("需求." + w.split('.')[-2] + b.split('.')[-1] \
+                                  + '_' + w.split('.')[-1] + '_' + c.split('.')[-1])
+        return '|'.join(ls)
+
+    def combine(self, df):
+        """combine after having final tags
+        """
+        df.attr = df.attr.astype('str')
+        df = df[['content', 'attr']]
+        df = df.drop_duplicates()
+        total = '|'.join(list(df[df.attr.str.contains('问题期许')].attr.apply(self.__func))).split('|')
+        df2 = pd.DataFrame(collections.Counter(total).most_common())
+        df2.columns = ['组合需求', 'count']
+        return df2
