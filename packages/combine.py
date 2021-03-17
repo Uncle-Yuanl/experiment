@@ -39,7 +39,7 @@ class Combine():
         if not tablename.endswith("tags"):
             raise Exception("请传入tags表")
         if not tablename.startswith("das."):
-            tagsname = "das." + tablename
+            tablename = "das." + tablename
         if not abpath:
             abpath = "/mnt/disk3/CIData/" + tablename + ".csv"
         if not os.path.exists(abpath):
