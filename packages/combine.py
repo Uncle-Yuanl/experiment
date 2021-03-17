@@ -206,13 +206,13 @@ class Combine():
         totalcount = df['count'].sum()
         dfcls = df[df['组合需求'].str.contains(cls)].reset_index(drop=True)
         clscount = dfcls['count'].sum()
-        ratiocls = clscount / totalcount
+        ratiocls = round(clscount / totalcount * 100, 2)
         ratiodic = {}
         for pd in dfcls.itertuples():
             if pd[0] == k:
                 break
             xuqiu_str = pd[1].split('.')[-1]
-            xuqiu_rat = int(pd[2]) / clscount
+            xuqiu_rat = round(int(pd[2]) / clscount * 100, 2)
             ratiodic[xuqiu_str] = xuqiu_rat
         return ratiocls, ratiodic
 
