@@ -2,12 +2,14 @@ from xtools import *
 from time import time
 import collections
 import pandas as pd
+import numpy as np
 import os
-import re
+import jieba
+import codecs
+import pickle
+import math
 import subprocess
 from sklearn.cluster import KMeans
-from sklearn.cluster import DBSCAN
-from sklearn.cluster import AgglomerativeClustering
 
 
 class Combine():
@@ -97,14 +99,14 @@ class Combine():
         df2.columns = ['组合需求', 'count']
         return df2
 
-    def cluster(self, filename, n_clusters, df=None, tofile=False):
+    def cluster(self, n_clusters, filename=None, df=None, tofile=False):
         """return result of cluster with given file or df
         """
         path = '/mnt/disk2/data/YuanHAO/对应关系应用/files/{}'.format(filename)
-        if not os.path.exists(path) and not df:
+        if not os.path.exists(path) and not isinstance(df, pd.DataFrame):
             raise Exception("Please upload cluster file to ./files folder OR specify the df")
         if not filename:
-            ws = df["组合需求"].tolist()
+            ws = df["组合需求"].apply(lambda x: x.split('.')[-1]).tolist()
         else:
             ws = pd.read_excel(path, header=None)[0].tolist()
 
@@ -146,19 +148,24 @@ class Combine():
         outputvecs = []
         for i in range(n_clusters):
             tmpword, tmpvec = [], []
-            print('\nClass {}'.format(i))
+            if not isinstance(df, pd.DataFrame):
+                print('\nClass {}'.format(i))
             for j in range(len(wsvec)):
                 if labels[j] == i:
-                    if not df:
+                    if not isinstance(df, pd.DataFrame):
                         print(newws[j], end=',')
                     tmpword.append(newws[j])
                     tmpvec.append(wsvec[j])
             outputvecs.append(tmpvec)
             outputwords.append(tmpword)
-        if tofile:
+        respath = None
+        if tofile and filename:
+            respath = '/mnt/disk2/data/YuanHAO/对应关系应用/files/{}聚类结果.txt'.format(filename)
+        elif tofile and isinstance(df, pd.DataFrame):
             respath = '/mnt/disk2/data/YuanHAO/对应关系应用/files/聚类结果.txt'
+        if respath:
             with open(respath, 'w', encoding='utf-8') as f:
-                for cls, wl in enumerate(test):
-                    f.write("class: {}".format(cls))
+                for cls, wl in enumerate(outputwords):
+                    f.write("--------------class: {}---------------".format(cls) + '\n')
                     for word in wl:
-                        f.write(word)
+                        f.write(word + '\n')
