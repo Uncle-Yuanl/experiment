@@ -181,40 +181,82 @@ class Combine():
     def combine(self, df):
         """combine after having final tags
         """
-        df.attr = df.attr.astype('str')
         df = df[['content', 'attr']]
+        df.attr = df.attr.astype('str')
         df = df.drop_duplicates()
         total = '|'.join(list(df[df.attr.str.contains('问题期许')].attr.apply(self.__func))).split('|')
         df2 = pd.DataFrame(collections.Counter(total).most_common())
         df2.columns = ['组合需求', 'count']
+        df2 = df2[~df2["组合需求"].str.contains("需求.其他")]
         return df2
 
-    def countclass(self, df):
+    def judge(self, tags, clslist, cls=None):
+        if not cls:
+            for cls in clslist:
+                if cls in tags:
+                    return True
+        else:
+            if cls in tags:
+                return True
+        return False
+
+    def countclass(self, comb_res, origin_df):
         """return ratio of every class
         """
-        clsdic = {}
-        totalcount = df['count'].sum()
-        clslist = df['组合需求'].apply(lambda x: x.split('.')[1]).unique().tolist()
-        for cls in clslist:
-            dfcls = df[df['组合需求'].str.contains(cls)]
-            clsdic[cls] = round(dfcls['count'].sum() / totalcount * 100, 2)
-        return sorted(clsdic.items(), key=lambda x: (x[1], x[0]), reverse=True)
+        clsdic_ratio = {}
+        self.clsdic_df = {}
+        # totalcount = df['count'].sum()  # no sum of count but the num of id which attr contains cls
+        clslist = comb_res['组合需求'].apply(lambda x: x.split('.')[1]).unique().tolist()
 
-    def search(self, df, cls, k):
+        totalcount = len(origin_df[origin_df.attr.apply(self.judge, args=(clslist, ))])
+        for cls in clslist:
+            # dfcls = comb_res[comb_res['组合需求'].str.contains(cls)]  # no count but distinct id
+            df_cls = origin_df[origin_df.attr.apply(self.judge, args=(clslist, cls,))]
+            self.clsdic_df[cls] = df_cls
+            clsdic_ratio[cls] = round(len(df_cls) / totalcount * 100, 2)
+        return sorted(clsdic_ratio.items(), key=lambda x: (x[1], x[0]), reverse=True)
+
+    def judge_combine(self, tags, comb_xuqiu):
+        """judge whether the combined requirement in the attr of this id
+        """
+        xuqiu_list = comb_xuqiu.split('_')
+        state = True
+        for xuqiu in xuqiu_list:
+            if xuqiu not in tags:
+                state = False
+        return state
+
+    def search(self, comb_res, cls, k):
         """search the top k in combined xuqiu under given cls
         """
-        totalcount = df['count'].sum()
-        dfcls = df[df['组合需求'].str.contains(cls)].reset_index(drop=True)
-        clscount = dfcls['count'].sum()
-        ratiocls = round(clscount / totalcount * 100, 2)
+        df_cls = self.clsdic_df[cls]
+        totalcount = len(df_cls)
+        xq_cls = comb_res[comb_res['组合需求'].str.contains(cls)].reset_index(drop=True)
         ratiodic = {}
-        for pd in dfcls.itertuples():
+        for pd in xq_cls.itertuples():
             if pd[0] == k:
                 break
+            # count the num of id which attr contains specific requirement
+            # requirement maybe in the form of A_B_C
             xuqiu_str = pd[1].split('.')[-1]
-            xuqiu_rat = round(int(pd[2]) / clscount * 100, 2)
+            df_comb = df_cls[df_cls.attr.apply(self.judge_combine, args=(xuqiu_str, ))]
+            xuqiu_rat = round(len(df_comb) / totalcount * 100, 2)
             ratiodic[xuqiu_str] = xuqiu_rat
-        return ratiocls, ratiodic
+        return ratiodic
+
+
+        # totalcount = df['count'].sum()
+        # dfcls = df[df['组合需求'].str.contains(cls)].reset_index(drop=True)
+        # clscount = dfcls['count'].sum()
+        # ratiocls = round(clscount / totalcount * 100, 2)
+        # ratiodic = {}
+        # for pd in dfcls.itertuples():
+        #     if pd[0] == k:
+        #         break
+        #     xuqiu_str = pd[1].split('.')[-1]
+        #     xuqiu_rat = round(int(pd[2]) / clscount * 100, 2)
+        #     ratiodic[xuqiu_str] = xuqiu_rat
+        # return ratiocls, ratiodic
 
 
 
