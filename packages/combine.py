@@ -16,12 +16,12 @@ class Combine():
     def __init__(self):
         pass
 
-    def _query(self):
-        self.mh = MarcpointHive()
+    def _query(self, tablename):
+        mh = MarcpointHive()
         print("开始检索数据，请等待......")
         start = time()
-        sql = "select content, attr from {}".format(self.tablename)
-        df = self.mh.query(sql)
+        sql = "select content, attr from {}".format(tablename)
+        df = mh.query(sql)
         print("数据检索完毕...耗时：{} s".format(time() - start))
         print("数据量为：", df.shape)
         return df
@@ -216,14 +216,26 @@ class Combine():
             clsdic_ratio[cls] = round(len(df_cls) / totalcount * 100, 2)
         return sorted(clsdic_ratio.items(), key=lambda x: (x[1], x[0]), reverse=True)
 
-    def judge_combine(self, tags, comb_xuqiu):
+    def judge_combine(self, tags, cls, comb_xuqiu):
         """judge whether the combined requirement in the attr of this id
         """
         xuqiu_list = comb_xuqiu.split('_')
         state = True
-        for xuqiu in xuqiu_list:
+        if len(xuqiu_list) == 1:
+            xuqiu = cls + "." + xuqiu_list[0]
             if xuqiu not in tags:
                 state = False
+        elif len(xuqiu_list) == 2:
+            for xuqiu in xuqiu_list:
+                if xuqiu not in tags:
+                    state = False
+        elif len(xuqiu_list) == 3:
+            xuqiu_list = ["部位" + "." + xuqiu_list[0],
+                            cls + "." + xuqiu_list[1],
+                          "程度" + "." + xuqiu_list[2]]
+            for xuqiu in xuqiu_list:
+                if xuqiu not in tags:
+                    state = False
         return state
 
     def search(self, comb_res, cls, k):
@@ -239,7 +251,7 @@ class Combine():
             # count the num of id which attr contains specific requirement
             # requirement maybe in the form of A_B_C
             xuqiu_str = pd[1].split('.')[-1]
-            df_comb = df_cls[df_cls.attr.apply(self.judge_combine, args=(xuqiu_str, ))]
+            df_comb = df_cls[df_cls.attr.apply(self.judge_combine, args=(cls, xuqiu_str, ))]
             xuqiu_rat = round(len(df_comb) / totalcount * 100, 2)
             ratiodic[xuqiu_str] = xuqiu_rat
         return ratiodic
