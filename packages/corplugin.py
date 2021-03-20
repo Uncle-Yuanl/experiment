@@ -34,7 +34,7 @@ def predict(df):
     if not ("content" in df.columns and "ex" in df.columns):
         raise Exception("df does the correct fields......")
     for content, ex in zip(df["content"], df["ex"]):
-        a, b = tokenizer.encode(content, ex)
+        a, b = tokenizer.encode(content[:200], ex[:200])
         x1.append(a)
         x2.append(b)
     x1 = pad_sequences(x1, padding='post')
