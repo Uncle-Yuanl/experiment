@@ -50,11 +50,14 @@ class Recongnition():
         self.mh = MarcpointHive()
         print("开始检索数据，请等待......")
         start = time()
-        sql = "select changjing, attr from {}".format(self.tablename)
+        sql = "select content, changjing, attr from {}".format(self.tablename)
         df = self.mh.query(sql)
         print("数据检索完毕...耗时：{} s".format(time() - start))
-        print("数据量为：", df.shape)
         self.df = df
+        if "ATTR" in self.df.columns and "attr" not in self.df.columns:
+            self.df['attr'] = self.df["ATTR"]
+        print("数据量为：", df.shape)
+        return self.df
 
     def transferdata(self, abpath=None):
         """通过export2csv工具，将表以csv格式传输至绝对路径
