@@ -8,12 +8,29 @@ import os
 from time import time
 import subprocess
 
-from packages.corplugin import predict, regulation
+from corplugin import predict, regulation
 
 class Correspondence():
-    def __init__(self, tablename, mission, **kwargs):
-        self.tablename = tablename
+    def __init__(self, tagsname, mission, **kwargs):
+        if not tagsname.endswith("tags"):
+            raise Exception("请传入tags表")
+        if not tagsname.startswith("das."):
+            tagsname = "das." + tagsname
+        self.tablename = tagsname
         self.mission = mission
+
+    def _query(self):
+        mh = MarcpointHive()
+        print("开始检索数据，请等待......")
+        start = time()
+        field1, field2 = self.mission.split('_')[0], self.mission.split('_')[1]
+        sql = 'select content, {}, {} from {}'.format(field1, field2, self.tablename)
+        print(sql)
+        df = mh.query(sql)
+        df = df.dropna()
+        print("数据检索完毕...耗时：{} s".format(time() - start))
+        print("数据量为：", df.shape)
+        return df
 
     def transferdata(self):
         """if data exists in csv format, read csv,
@@ -21,7 +38,7 @@ class Correspondence():
         """
         abpath = '/mnt/disk3/CIData/{}.csv'.format(self.tablename)
         if os.path.exists(abpath):
-            return pd.read_csv(abpath, keep_default_na=False, error_bad_lines=False, dtype=str)
+            return pd.read_csv(abpath, keep_default_na=False, error_bad_lines=False, dtype=str, nrows=1000).dropna()
         else:
             try:
                 c = "su ops -c 'sh /mnt/disk4/tools/Export2CSV.sh " + self.tablename + ' ' + abpath + "'"
@@ -41,7 +58,7 @@ class Correspondence():
         field1, field2 = self.mission.split('_')[0], self.mission.split('_')[1]
         if not (field1 in df.columns and field2 in df.columns):
             raise Exception("Table {} does not have field: {} or {}".format(self.tablename, field1, field2))
-        df = df[['content', field1, field2]]
+        df = df[['id', 'content', field1, field2]]
         df = df[(df['content'] != '') & (df[field1] != '') & (df[field2] != '')]     
         
         # add field
@@ -62,13 +79,15 @@ class Correspondence():
             for count, pair in enumerate(pair_list):
                 i += 1
                 df_list.append(pd.DataFrame({'count': '{}/{}'.format(count + 1, count_total),
+                                             'id': row['id'],
                                              'content': row['content'],
                                              'a': pair[0],
                                              'b': pair[1],
                                              'aclass': field1,
                                              'bclass': field2}, index=[i]))
         df_res = pd.concat(df_list)
-        df_res['ex'] = df_res['a'] + df_res['b']
+        df_res = df_res.dropna()
+        df_res['ex'] = df_res['a'] + "#" + df_res['b']
         print("Data expansion completed...... Total: {}".format(df_res.shape))
         return df_res
 
@@ -85,7 +104,7 @@ class Correspondence():
         assert len(pred) == len(df)
         df['pred'] = pred
         df_res = df[df['pred'] == 1]
-        print("Data prediction completed...... Total: {}", df_res.shape)
+        print("Data prediction completed...... Total: {}".format(df_res.shape))
         return df_res
 
     def filter(self, queue, df):
@@ -123,6 +142,7 @@ if __name__ == '__main__':
     # retrieve data by sql
     start = time()
     df = cor.transferdata()
+    # df = cor._query()
     print("Data acquisition completed... Time cost: ", time() - start)
     print("Data to process: {}".format(df.shape))
 
@@ -143,6 +163,8 @@ if __name__ == '__main__':
 
         # statistics and calculate
         print("Start statistics......")
+        df = queue.get()
+        df.to_excel('/mnt/disk2/data/YuanHAO/对应关系应用/cor_restmp.xlsx', index=False)
 
 
 
