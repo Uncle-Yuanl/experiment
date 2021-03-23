@@ -169,7 +169,7 @@ if __name__ == '__main__':
         # statistics and calculate
         print("Start writing to file......")
         df = queue.get()
-        df.to_csv('/mnt/disk2/data/YuanHAO/对应关系应用/cor_restmp_{}.xlsx'.format(args.mission),
+        df.to_csv('/mnt/disk2/data/YuanHAO/对应关系应用/cor_restmp_{}.csv'.format(args.mission),
                   sep=str('\t'), index=False)
         print("Start statistics......")
 
