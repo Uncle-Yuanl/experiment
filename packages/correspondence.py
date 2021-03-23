@@ -24,7 +24,7 @@ class Correspondence():
         print("开始检索数据，请等待......")
         start = time()
         field1, field2 = self.mission.split('_')[0], self.mission.split('_')[1]
-        sql = 'select content, {}, {} from {}'.format(field1, field2, self.tablename)
+        sql = 'select id, content, {}, {} from {}'.format(field1, field2, self.tablename)
         print(sql)
         df = mh.query(sql)
         df = df.dropna()
@@ -38,7 +38,7 @@ class Correspondence():
         """
         abpath = '/mnt/disk3/CIData/{}.csv'.format(self.tablename)
         if os.path.exists(abpath):
-            return pd.read_csv(abpath, keep_default_na=False, error_bad_lines=False, dtype=str, nrows=1000).dropna()
+            return pd.read_csv(abpath, keep_default_na=False, error_bad_lines=False, dtype=str).dropna()
         else:
             try:
                 c = "su ops -c 'sh /mnt/disk4/tools/Export2CSV.sh " + self.tablename + ' ' + abpath + "'"
@@ -98,10 +98,15 @@ class Correspondence():
         pred = np.array([])
         total_loop = len(df) // 1000 + 1
         for loop in range(total_loop):
-            tmp = predict(df[loop * 1000:(loop + 1) * 1000])
+            if loop % 10 == 0:
+                print(loop)
+            try:
+                tmp = predict(df[loop * 1000:(loop + 1) * 1000])
+            except:
+                tmp = np.array([0] * 1000)
+                print('-----------{}------------'.format(loop))
             pred = np.concatenate([pred, tmp])
-        pred.astype(int)
-        assert len(pred) == len(df)
+        pred = pred.astype(int)
         df['pred'] = pred
         df_res = df[df['pred'] == 1]
         print("Data prediction completed...... Total: {}".format(df_res.shape))
@@ -134,15 +139,15 @@ if __name__ == '__main__':
                         help="determine the data source, start with das. end with _tags")
     parser.add_argument("mission", type=str,
                         help="determine the mission type, 'xuqiu_fangan' or 'fangan_driver'")
-    parser.add_argument("--numprocess", type=int, default=4,
+    parser.add_argument("--numprocess", type=int, default=10,
                         help="determine the number of processes")
     args = parser.parse_args()
     cor = Correspondence(args.tablename, args.mission)
 
     # retrieve data by sql
     start = time()
-    df = cor.transferdata()
-    # df = cor._query()
+    # df = cor.transferdata()
+    df = cor._query()
     print("Data acquisition completed... Time cost: ", time() - start)
     print("Data to process: {}".format(df.shape))
 
@@ -162,10 +167,11 @@ if __name__ == '__main__':
         # print(queue.get())
 
         # statistics and calculate
-        print("Start statistics......")
+        print("Start writing to file......")
         df = queue.get()
-        df.to_excel('/mnt/disk2/data/YuanHAO/对应关系应用/cor_restmp.xlsx', index=False)
-
+        df.to_csv('/mnt/disk2/data/YuanHAO/对应关系应用/cor_restmp_{}.xlsx'.format(args.mission),
+                  sep=str('\t'), index=False)
+        print("Start statistics......")
 
 
 
