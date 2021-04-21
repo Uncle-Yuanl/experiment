@@ -109,6 +109,8 @@ class Correspondence():
         pred = pred.astype(int)
         df['pred'] = pred
         df_res = df[df['pred'] == 1]
+        df[df['pred'] == 0].to_csv('/mnt/disk2/data/YuanHAO/对应关系应用/filter_fangan_driver.csv',
+                                   sep=str('\t'), index=False)
         print("Data prediction completed...... Total: {}".format(df_res.shape))
         return df_res
 
@@ -168,9 +170,9 @@ if __name__ == '__main__':
 
         # statistics and calculate
         print("Start writing to file......")
-        df = queue.get()
-        df.to_csv('/mnt/disk2/data/YuanHAO/对应关系应用/cor_restmp_{}.csv'.format(args.mission),
-                  sep=str('\t'), index=False)
+        # df = queue.get()
+        # df.to_csv('/mnt/disk2/data/YuanHAO/对应关系应用/cor_restmp_{}.csv'.format(args.mission),
+        #           sep=str('\t'), index=False)
         print("Start statistics......")
 
 
