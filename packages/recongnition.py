@@ -75,9 +75,56 @@ class Recongnition():
             c = "su ops -c 'sh /mnt/disk4/tools/Export2CSV.sh " + self.tablename + ' ' + abpath + "'"
             print(c)
             subprocess.run(c, shell=True)
-        self.df = pd.read_csv(abpath, error_bad_lines=False,)
+        self.df = pd.read_csv(abpath, error_bad_lines=False, sep=',', escapechar='\\', quotechar='"')
         if "ATTR" in self.df.columns and "attr" not in self.df.columns:
             self.df['attr'] = self.df["ATTR"]
+
+    def __func(self, tags, comb_only=False):
+        """tags即attr字段内容
+        更新之后attr字段中的需求格式为： 需求.问题期许/部位/程度.$类别.xx
+        """
+        if '问题期许' not in tags:
+            return ""
+        tags = tags.split('|')
+        lsw, lsb, lsc = [], [], []
+        for tag in tags:
+            if tag.startswith('需求.问题期许'):
+                lsw.append(tag)
+            elif tag.startswith('需求.部位'):
+                lsb.append(tag)
+            elif tag.startswith('需求.程度'):
+                lsc.append(tag)
+        ls = []
+        for w in lsw:
+            if len(lsb) == 0:
+                if len(lsc) == 0:
+                    ls.append("需求." + ".".join(w.split('.')[-2:]))
+                for c in lsc:
+                    ls.append("需求." + ".".join(w.split('.')[-2:]) + '_' + c.split('.')[-1])
+            for b in lsb:
+                if len(lsc) == 0:
+                    if b.split('.')[-1] in w.split('.')[-1]:
+                        ls.append("需求." + ".".join(w.split('.')[-2:]))
+                    else:
+                        ls.append("需求." + w.split('.')[-2] + "." + b.split('.')[-1] + '_' + w.split('.')[-1])
+                for c in lsc:
+                    if b.split('.')[-1] in w.split('.')[-1]:
+                        ls.append("需求." + ".".join(w.split('.')[-2:]) + '_' + c.split('.')[-1])
+                    else:
+                        ls.append("需求." + w.split('.')[-2] + "." + b.split('.')[-1] \
+                                  + '_' + w.split('.')[-1] + '_' + c.split('.')[-1])
+        if comb_only:
+            return ''.join([x for x in ls if len(x.split('.')[-1].split('_')) > 1])
+        else:
+            return '|'.join(ls)
+
+    def __combine(self, comb_only):
+        """
+        将部位、问题期许、程度进行组合
+        """
+        print('开始生成组合需求......')
+        self.df.attr = self.df.attr.astype('str').apply(self.__func, args=(comb_only,))
+
 
     def __select_cjwords(self, classtag):
         """
@@ -94,7 +141,9 @@ class Recongnition():
         self.df.changjing = self.df.changjing.astype('str')
         self.df.attr = self.df.attr.astype('str')
 
-        self.df = self.df[self.df.attr.apply(lambda x: bool(re.search(classtag, x)))]
+        # self.df = self.df[self.df.attr.apply(lambda x: bool(re.search(classtag, x)))]
+        self.df = self.df[self.df.attr.str.contains(classtag)]
+        print(self.df.shape)
 
         self.obj = collections.Counter([x for x in '|'.join(list(self.df.attr)).split('|') if bool(re.search(classtag, x))])
 
@@ -114,7 +163,7 @@ class Recongnition():
         self.df['rsk'] = self.df.ren.astype('str') + self.df.shi.astype('str') + self.df.kong.astype('str')
 
         self.rskset = '111'
-        self.df = self.df[(self.df.event == 1) | (self.df.rsk.str.contains(self.rskset))]
+        # self.df = self.df[(self.df.event == 1) | (self.df.rsk.str.contains(self.rskset))]
         self.df = self.df[['content', 'changjing', 'attr', 'event', 'ren', 'shi', 'kong', 'rsk']].drop_duplicates()
         print("筛选后的df：", self.df.shape)
         self.df.changjing = self.df.changjing.apply(lambda x: self.__simplifycj(x))
@@ -218,6 +267,11 @@ class Recongnition():
         """
         if not hasattr(self, "df"):
             raise Exception("请先检索数据......")
+
+        self.__combine(comb_only=False)
+        print("生成组合需求完毕......")
+        print(self.df.shape)
+
         self.__select_cjwords(classtag)
         print("更新场景词完毕......")
 
@@ -318,7 +372,7 @@ class Recongnition():
         dft = pd.DataFrame(lstgi)
         dft.columns = ['需求', '场景', '场景关联指数', 'count']
 
-        print('TOP5场景占比', self.totaldf[(self.totaldf['需求'] == jylb) & (self.totaldf['场景'].apply(lambda x: filtercj(x)))]['占比(%)'].sum(),
+        print('TOP{}场景占比'.format(len(cjlist)), self.totaldf[(self.totaldf['需求'] == jylb) & (self.totaldf['场景'].apply(lambda x: filtercj(x)))]['占比(%)'].sum(),
               '%')
         res = dft[dft['count'] > 0].sort_values(by='场景关联指数', ascending=False)
         return res
