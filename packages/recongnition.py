@@ -163,7 +163,7 @@ class Recongnition():
         self.df['rsk'] = self.df.ren.astype('str') + self.df.shi.astype('str') + self.df.kong.astype('str')
 
         self.rskset = '111'
-        # self.df = self.df[(self.df.event == 1) | (self.df.rsk.str.contains(self.rskset))]
+        self.df = self.df[(self.df.event == 1) | (self.df.rsk.str.contains(self.rskset))]
         self.df = self.df[['content', 'changjing', 'attr', 'event', 'ren', 'shi', 'kong', 'rsk']].drop_duplicates()
         print("筛选后的df：", self.df.shape)
         self.df.changjing = self.df.changjing.apply(lambda x: self.__simplifycj(x))

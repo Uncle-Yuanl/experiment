@@ -38,13 +38,13 @@ class Correspondence():
         """
         abpath = '/mnt/disk3/CIData/{}.csv'.format(self.tablename)
         if os.path.exists(abpath):
-            return pd.read_csv(abpath, keep_default_na=False, error_bad_lines=False, dtype=str).dropna()
+            return pd.read_csv(abpath, keep_default_na=False, error_bad_lines=False, escapechar='\\', quotechar='"').dropna()
         else:
             try:
                 c = "su ops -c 'sh /mnt/disk4/tools/Export2CSV.sh " + self.tablename + ' ' + abpath + "'"
                 print(c)
                 subprocess.run(c, shell=True)
-                return pd.read_csv(abpath, keep_default_na=False, error_bad_lines=False, dtype=str)
+                return pd.read_csv(abpath, keep_default_na=False, error_bad_lines=False, escapechar='\\', quotechar='"')
             except:
                 mh = MarcpointHive()
                 field1, field2 = self.mission.split('_')[0], self.mission.split('_')[1]
@@ -148,8 +148,10 @@ if __name__ == '__main__':
 
     # retrieve data by sql
     start = time()
-    # df = cor.transferdata()
-    df = cor._query()
+    df = cor.transferdata()
+    if "ATTR" in df.columns and "attr" not in df.columns:
+        df['attr'] = df["ATTR"]
+    # df = cor._query()
     print("Data acquisition completed... Time cost: ", time() - start)
     print("Data to process: {}".format(df.shape))
 
