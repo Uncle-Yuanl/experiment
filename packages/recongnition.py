@@ -279,7 +279,7 @@ class Recongnition():
         self.__update_dicmap()
         print("更新映射表完毕......")
 
-    def candidate(self, fulltag):
+    def candidate(self, fulltag, num):
         dfmerged = self.df
         dfmerged.changjing = dfmerged.changjing.apply(self.__mergecj)
 
@@ -315,7 +315,7 @@ class Recongnition():
         self.dftgi = dftgi
         tmp = dftgi[['场景', fulltag, 'All']].sort_values(by=fulltag, ascending=False).reset_index(drop=True)
         # tmp = tmp[:20]
-        tmp = tmp[tmp[fulltag] >= int(tmp.iloc[20][fulltag])]
+        tmp = tmp[tmp[fulltag] >= int(tmp.iloc[min(num, len(tmp) - 1)][fulltag])]
         lstgi = []
         for i in range(1, tmp.shape[0]):
             lstgi.append([fulltag, tmp.iloc[i]['场景'],
@@ -368,7 +368,20 @@ class Recongnition():
             xc = tmp[tmp['场景'].apply(lambda x: filteracj(x, cj))]
             tgi = xc[jylb].sum() * tmp.iloc[0]['All'] / tmp.iloc[0][jylb] / xc['All'].sum() * 100
             #     print(xc,cj,tgi)
-            lstgi.append([jylb, cj, round(tgi), xc[jylb].sum()])
+            try:
+                lstgi.append([jylb, cj, round(tgi), xc[jylb].sum()])
+            except:
+                # print(cj)
+                # print('-------------------')
+                # print(xc)
+                print("损失场景为：{}".format(cj))
+                # print(type(tgi))
+                # print(tgi)
+                # print('-------------------')
+                # print('xc[jylb].sum():', xc[jylb].sum())
+                # print("tmp.iloc[0]['All']:", tmp.iloc[0]['All'])
+                # print('tmp.iloc[0][jylb]:', tmp.iloc[0][jylb])
+                # print("xc['All'].sum():", xc['All'].sum())
         dft = pd.DataFrame(lstgi)
         dft.columns = ['需求', '场景', '场景关联指数', 'count']
 
