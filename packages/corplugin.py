@@ -7,7 +7,7 @@ from keras.preprocessing.sequence import pad_sequences
 from keras_bert import Tokenizer
 
 # bert词表
-dict_path='/mnt/disk6-old/project/auto-sentiment/bert-chinese_wwm/vocab.txt'
+dict_path='/mnt/disk6/project/auto-sentiment/bert-chinese_wwm/vocab.txt'
 
 def read_token_vocab(file):
     with open(file) as f:
