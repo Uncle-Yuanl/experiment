@@ -309,7 +309,7 @@ class Recongnition():
 
         totaldf = dfxqc
         self.totaldf = totaldf
-        dftest = totaldf[totaldf['条数'] > 1]
+        dftest = totaldf[totaldf['条数'] >= 1]
         dftgi = dftest.pivot_table(index='场景', columns='需求', values='条数', aggfunc='sum',
                                    margins=True).reset_index().fillna(0)
         self.dftgi = dftgi
