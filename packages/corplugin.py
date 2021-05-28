@@ -57,3 +57,4 @@ if __name__ == '__main__':
                                {"content": "这是一段我也不知道啥意思的内容容", "ex": "反正这是个字符串串"}])
 
     print(predict(model_data))
+    print()
