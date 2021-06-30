@@ -391,4 +391,18 @@ class Recongnition():
         return res
 
 
+class RecongAfCor(Recongnition):
+    def __init__(self, df, sim=0.75):
+        self.df = df
+        with codecs.open('/mnt/disk2/data/YuanHAO/对应关系应用/tongyong.pickle', "rb") as f:
+            VECTOR = pickle.load(f)
+        self.W_norm = VECTOR['W_norm']
+        self.vocab = VECTOR['vocab']
+
+        self.diccjcount = {}
+        self.dicxqcount = {}
+
+        self.dicmap = {}
+
+        self.sim = sim
 
